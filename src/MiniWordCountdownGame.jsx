@@ -50,6 +50,12 @@ const DEFAULT_CONTESTS = [
   },
 ];
 
+const DEFAULT_TEAMS = [
+  { id: "team-1", name: "Đội 1", durationSeconds: 60, contestIndex: 0 },
+  { id: "team-2", name: "Đội 2", durationSeconds: 60, contestIndex: 1 },
+  { id: "team-3", name: "Đội 3", durationSeconds: 60, contestIndex: 2 },
+];
+
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
   const seconds = Math.max(0, totalSeconds % 60).toString().padStart(2, "0");
@@ -80,9 +86,10 @@ function normalizeImportedContest(raw, index) {
 export default function MiniWordCountdownGame() {
   const fileInputRef = useRef(null);
   const [contests, setContests] = useState(DEFAULT_CONTESTS);
-  const [selectedContestIndex, setSelectedContestIndex] = useState(0);
+  const [teams, setTeams] = useState(DEFAULT_TEAMS);
+  const [selectedTeamIndex, setSelectedTeamIndex] = useState(0);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_CONTESTS[0].durationSeconds);
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TEAMS[0].durationSeconds);
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -90,7 +97,8 @@ export default function MiniWordCountdownGame() {
   const [answeredCorrectIds, setAnsweredCorrectIds] = useState([]);
   const [skippedIds, setSkippedIds] = useState([]);
 
-  const contest = contests[selectedContestIndex];
+  const team = teams[selectedTeamIndex];
+  const contest = contests[team.contestIndex] || contests[0];
   const questions = contest.questions;
   const currentQuestion = questions[questionIndex];
 
@@ -99,8 +107,8 @@ export default function MiniWordCountdownGame() {
   const totalQuestions = questions.length;
   const allAnsweredCorrect = totalQuestions > 0 && correctCount === totalQuestions;
   const progress = useMemo(
-    () => Math.max(0, Math.min(100, (timeLeft / contest.durationSeconds) * 100)),
-    [timeLeft, contest.durationSeconds]
+    () => Math.max(0, Math.min(100, (timeLeft / team.durationSeconds) * 100)),
+    [timeLeft, team.durationSeconds]
   );
 
   useEffect(() => {
@@ -124,7 +132,7 @@ export default function MiniWordCountdownGame() {
   }, [allAnsweredCorrect, running]);
 
   function getQuestionId(index = questionIndex) {
-    return `${contest.id}-${index}`;
+    return `${team.id}-${contest.id}-${index}`;
   }
 
   function findNextPlayableQuestion(fromIndex = questionIndex) {
@@ -155,11 +163,11 @@ export default function MiniWordCountdownGame() {
     setFinished(false);
   }
 
-  function resetContest(index = selectedContestIndex) {
-    const nextContest = contests[index];
-    setSelectedContestIndex(index);
+  function resetTeam(index = selectedTeamIndex) {
+    const nextTeam = teams[index];
+    setSelectedTeamIndex(index);
     setQuestionIndex(0);
-    setTimeLeft(nextContest.durationSeconds);
+    setTimeLeft(nextTeam.durationSeconds);
     setRunning(false);
     setFinished(false);
     setShowHint(false);
@@ -168,13 +176,36 @@ export default function MiniWordCountdownGame() {
     setImportError("");
   }
 
-  function updateContestDuration(value) {
-    const seconds = Math.max(10, Number(value || 0));
-    const nextContests = contests.map((item, index) =>
-      index === selectedContestIndex ? { ...item, durationSeconds: seconds } : item
+  function updateTeamName(value) {
+    setTeams((items) =>
+      items.map((item, index) => (index === selectedTeamIndex ? { ...item, name: value } : item))
     );
-    setContests(nextContests);
+  }
+
+  function updateTeamDuration(value) {
+    const seconds = Math.max(10, Number(value || 0));
+    setTeams((items) =>
+      items.map((item, index) =>
+        index === selectedTeamIndex ? { ...item, durationSeconds: seconds } : item
+      )
+    );
     if (!running) setTimeLeft(seconds);
+  }
+
+  function updateTeamContest(value) {
+    const contestIndex = Number(value);
+    setTeams((items) =>
+      items.map((item, index) =>
+        index === selectedTeamIndex ? { ...item, contestIndex } : item
+      )
+    );
+    setQuestionIndex(0);
+    setRunning(false);
+    setFinished(false);
+    setShowHint(false);
+    setAnsweredCorrectIds([]);
+    setSkippedIds([]);
+    setImportError("");
   }
 
   function markCorrect() {
@@ -228,9 +259,15 @@ export default function MiniWordCountdownGame() {
         }
 
         setContests(nextContests);
-        setSelectedContestIndex(0);
+        setTeams((items) =>
+          items.map((item) => ({
+            ...item,
+            contestIndex: Math.min(item.contestIndex, nextContests.length - 1),
+          }))
+        );
+        setSelectedTeamIndex(0);
         setQuestionIndex(0);
-        setTimeLeft(nextContests[0].durationSeconds);
+        setTimeLeft(teams[0].durationSeconds);
         setRunning(false);
         setFinished(false);
         setAnsweredCorrectIds([]);
@@ -249,7 +286,7 @@ export default function MiniWordCountdownGame() {
 
   const resultMessage = allAnsweredCorrect
     ? "Đã trả lời đúng toàn bộ câu hỏi!"
-    : "Đã hết giờ phần thi.";
+    : "Đã hết giờ lượt thi.";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-pink-800 p-6 text-white">
@@ -259,7 +296,7 @@ export default function MiniWordCountdownGame() {
             <p className="text-sm font-medium uppercase tracking-[0.3em] text-pink-200">Mini Game</p>
             <h1 className="mt-1 text-3xl font-black md:text-5xl">Countdown Quiz Arena</h1>
             <p className="mt-2 text-white/75">
-              3 phần thi, import câu hỏi, bỏ qua câu hỏi và chỉ kết thúc khi hết giờ hoặc đúng hết.
+              Cấu hình đội thi, thời gian riêng, chọn gói câu hỏi và chỉ kết thúc khi hết giờ hoặc đúng hết.
             </p>
           </div>
 
@@ -284,41 +321,70 @@ export default function MiniWordCountdownGame() {
             <CardContent className="space-y-5 p-5 text-slate-900">
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-purple-700" />
-                <h2 className="text-xl font-black">Cấu hình phần thi</h2>
+                <h2 className="text-xl font-black">Cấu hình đội thi</h2>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-600">Chọn phần thi</label>
+                <label className="text-sm font-bold text-slate-600">Chọn đội thi</label>
                 <div className="grid gap-2">
-                  {contests.map((item, index) => (
-                    <button
-                      key={item.id}
-                      onClick={() => resetContest(index)}
-                      className={`rounded-2xl border p-3 text-left transition ${
-                        selectedContestIndex === index
-                          ? "border-purple-500 bg-purple-50 text-purple-900"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <p className="font-bold">{item.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.questions.length} câu hỏi • {formatTime(item.durationSeconds)}
-                      </p>
-                    </button>
-                  ))}
+                  {teams.map((item, index) => {
+                    const teamContest = contests[item.contestIndex] || contests[0];
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => resetTeam(index)}
+                        className={`rounded-2xl border p-3 text-left transition ${
+                          selectedTeamIndex === index
+                            ? "border-purple-500 bg-purple-50 text-purple-900"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <p className="font-bold">{item.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {teamContest.name} • {teamContest.questions.length} câu hỏi • {formatTime(item.durationSeconds)}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-600">Tên đội thi</label>
+                <input
+                  value={team.name}
+                  disabled={running}
+                  onChange={(event) => updateTeamName(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-lg font-bold outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-600">Gói câu hỏi của đội</label>
+                <select
+                  value={team.contestIndex}
+                  disabled={running}
+                  onChange={(event) => updateTeamContest(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-bold outline-none focus:border-purple-500"
+                >
+                  {contests.map((item, index) => (
+                    <option key={item.id} value={index}>
+                      {item.name} ({item.questions.length} câu)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                  <Clock className="h-4 w-4" /> Thời gian phần thi, giây
+                  <Clock className="h-4 w-4" /> Thời gian của đội, giây
                 </label>
                 <input
                   type="number"
                   min="10"
-                  value={contest.durationSeconds}
+                  value={team.durationSeconds}
                   disabled={running}
-                  onChange={(event) => updateContestDuration(event.target.value)}
+                  onChange={(event) => updateTeamDuration(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-lg font-bold outline-none focus:border-purple-500"
                 />
               </div>
@@ -385,7 +451,7 @@ export default function MiniWordCountdownGame() {
                         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-yellow-100">
                           <Trophy className="h-12 w-12 text-yellow-600" />
                         </div>
-                        <h2 className="text-4xl font-black">Kết thúc phần thi!</h2>
+                        <h2 className="text-4xl font-black">Kết thúc lượt thi!</h2>
                         <p className="text-lg font-semibold text-slate-700">{resultMessage}</p>
                         <div className="grid grid-cols-3 gap-3 text-center">
                           <div className="rounded-2xl bg-emerald-50 px-5 py-4">
@@ -401,13 +467,13 @@ export default function MiniWordCountdownGame() {
                             <p className="text-2xl font-black text-slate-800">{totalQuestions}</p>
                           </div>
                         </div>
-                        <Button onClick={() => resetContest()} className="rounded-2xl px-6 py-6 text-base">
-                          <RotateCcw className="mr-2 h-5 w-5" /> Chơi lại phần này
+                        <Button onClick={() => resetTeam()} className="rounded-2xl px-6 py-6 text-base">
+                          <RotateCcw className="mr-2 h-5 w-5" /> Chơi lại đội này
                         </Button>
                       </motion.div>
                     ) : (
                       <motion.div
-                        key={`${contest.id}-${questionIndex}`}
+                        key={`${team.id}-${contest.id}-${questionIndex}`}
                         initial={{ opacity: 0, y: 30, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -30, scale: 0.95 }}
@@ -420,7 +486,7 @@ export default function MiniWordCountdownGame() {
 
                         <div>
                           <p className="text-sm font-bold uppercase tracking-[0.25em] text-pink-600">
-                            {contest.name}
+                            {team.name} • {contest.name}
                           </p>
                           <h2 className="mt-3 break-words text-4xl font-black tracking-tight md:text-7xl">
                             {currentQuestion?.text || "Chưa có câu hỏi"}
@@ -495,16 +561,16 @@ export default function MiniWordCountdownGame() {
                     <p className="font-semibold text-white">Luật chơi</p>
                     <p className="mt-2">
                       Bấm Đúng để ghi điểm và chuyển câu. Bấm Bỏ qua để chuyển câu nhưng câu đó vẫn có thể quay lại.
-                      Phần thi chỉ kết thúc khi hết giờ hoặc tất cả câu đã đúng.
+                      Mỗi đội có thời gian và gói câu hỏi riêng. Lượt thi chỉ kết thúc khi hết giờ hoặc tất cả câu đã đúng.
                     </p>
                   </div>
 
                   <Button
-                    onClick={() => resetContest()}
+                    onClick={() => resetTeam()}
                     variant="outline"
                     className="h-12 rounded-2xl border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                   >
-                    <RotateCcw className="mr-2 h-4 w-4" /> Reset phần thi
+                    <RotateCcw className="mr-2 h-4 w-4" /> Reset đội thi
                   </Button>
                 </div>
               </div>
