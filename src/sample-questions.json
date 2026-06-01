@@ -1,0 +1,31 @@
+{
+  "contests": [
+    {
+      "name": "Phần thi 1: Khởi động",
+      "durationSeconds": 60,
+      "questions": [
+        { "text": "Innovation", "hint": "A new idea, method, or product" },
+        { "text": "Collaboration", "hint": "Working together to achieve a goal" },
+        { "text": "Workspace", "hint": "A place where people work" }
+      ]
+    },
+    {
+      "name": "Phần thi 2: Tăng tốc",
+      "durationSeconds": 90,
+      "questions": [
+        { "text": "Community", "hint": "A group of people connected by shared interests" },
+        { "text": "Focus", "hint": "Giving attention to one thing" },
+        { "text": "Strategy", "hint": "A plan to reach a goal" }
+      ]
+    },
+    {
+      "name": "Phần thi 3: Về đích",
+      "durationSeconds": 120,
+      "questions": [
+        { "text": "Leadership", "hint": "Helping a group move toward a goal" },
+        { "text": "Creativity", "hint": "Using imagination to create something" },
+        { "text": "Efficiency", "hint": "Doing something with less waste" }
+      ]
+    }
+  ]
+}
